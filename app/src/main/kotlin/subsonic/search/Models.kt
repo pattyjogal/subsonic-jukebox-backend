@@ -45,3 +45,10 @@ data class CleanSong(
     val artist: String,
     val album: String
 )
+
+@Serializable
+data class QueueItem(
+    val queueId: String,
+    val song: CleanSong,
+    val addedAt: Long = System.currentTimeMillis()
+)

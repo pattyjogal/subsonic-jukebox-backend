@@ -1,0 +1,6 @@
+data: []
+event: queue-update
+
+data: [{"queueId":"51f5c528-78f2-4921-8b00-2b11751d6a9d","song":{"id":"pawrlpMsck5MXgifHqPngC","title":"#9 Dream","artist":"John Lennon","album":"Lennon Legend: The Very Best of John Lennon"},"addedAt":1777317675487}]
+event: queue-update
+

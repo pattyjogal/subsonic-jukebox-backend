@@ -6,8 +6,13 @@ import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.server.sse.*
+import io.ktor.sse.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 
 private val logger = LoggerFactory.getLogger("subsonic.search.App")
@@ -22,11 +27,13 @@ fun main() {
     logger.info("Username: {}", username)
 
     val subsonicService = SubsonicService(baseUrl, username, password)
+    val queueService = QueueService()
 
     embeddedServer(Netty, port = 8080) {
         install(ContentNegotiation) {
             json()
         }
+        install(SSE)
 
         routing {
             get("/search") {
@@ -44,6 +51,42 @@ fun main() {
                 } catch (e: Exception) {
                     logger.error("Error during search for query: {}", query, e)
                     call.respond(HttpStatusCode.InternalServerError, mapOf("error" to (e.message ?: "Unknown error")))
+                }
+            }
+
+            get("/queue") {
+                call.respond(queueService.getQueue())
+            }
+
+            post("/queue/add") {
+                try {
+                    val song = call.receive<CleanSong>()
+                    val item = queueService.addToQueue(song)
+                    logger.info("Added song to queue: {} - {}", song.artist, song.title)
+                    call.respond(HttpStatusCode.Created, item)
+                } catch (e: Exception) {
+                    logger.error("Failed to add song to queue", e)
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid song data"))
+                }
+            }
+
+            post("/queue/next") {
+                val item = queueService.next()
+                if (item != null) {
+                    logger.info("Playing next song: {} - {}", item.song.artist, item.song.title)
+                    call.respond(item)
+                } else {
+                    call.respond(HttpStatusCode.NoContent)
+                }
+            }
+
+            sse("/queue/events") {
+                logger.info("Client connected to queue events")
+                // Send initial state
+                send(ServerSentEvent(data = Json.encodeToString(queueService.getQueue()), event = "queue-update"))
+                
+                queueService.events.collect { updatedQueue ->
+                    send(ServerSentEvent(data = Json.encodeToString(updatedQueue), event = "queue-update"))
                 }
             }
         }
