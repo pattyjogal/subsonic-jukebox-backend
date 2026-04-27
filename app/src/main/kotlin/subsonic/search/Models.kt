@@ -43,7 +43,9 @@ data class CleanSong(
     val id: String,
     val title: String,
     val artist: String,
-    val album: String
+    val album: String,
+    val streamUrl: String? = null,
+    val coverArtUrl: String? = null
 )
 
 @Serializable

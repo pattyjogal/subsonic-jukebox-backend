@@ -1,0 +1,10 @@
+.git
+.gradle
+.kotlin
+build
+app/build
+bin
+out
+*.db
+*.txt
+.env

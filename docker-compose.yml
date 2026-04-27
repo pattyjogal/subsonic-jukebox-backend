@@ -1,0 +1,9 @@
+services:
+  subsonic-search:
+    build: .
+    container_name: subsonic-search-service
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    restart: unless-stopped

@@ -31,7 +31,10 @@ fun main() {
 
     embeddedServer(Netty, port = 8080) {
         install(ContentNegotiation) {
-            json()
+            json(Json {
+                ignoreUnknownKeys = true
+                explicitNulls = false
+            })
         }
         install(SSE)
 
