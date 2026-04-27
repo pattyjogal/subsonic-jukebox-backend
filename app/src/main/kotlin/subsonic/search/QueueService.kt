@@ -30,6 +30,14 @@ class QueueService {
         return item
     }
 
+    suspend fun remove(queueId: String): Boolean {
+        val removed = queue.removeIf { it.queueId == queueId }
+        if (removed) {
+            notifyChanged()
+        }
+        return removed
+    }
+
     fun getQueue(): List<QueueItem> {
         return queue.toList()
     }

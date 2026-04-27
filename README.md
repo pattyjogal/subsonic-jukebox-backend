@@ -30,10 +30,25 @@ The server will start on **port 8080**.
 
 ## Testing the API
 
-Once the service is running, you can search for songs using the `/search` endpoint:
-
+### Search
 ```bash
 curl "http://localhost:8080/search?q=your_search_query"
+```
+
+### Queue Management
+- **Get Queue**: `curl http://localhost:8080/queue`
+- **Add to Queue**: 
+  ```bash
+  curl -X POST http://localhost:8080/queue/add -H "Content-Type: application/json" -d '{"id":"song_id","title":"Title","artist":"Artist","album":"Album"}'
+  ```
+- **Next Track (Pop)**: `curl -X POST http://localhost:8080/queue/next`
+- **Remove Specific Item**: `curl -X POST http://localhost:8080/queue/remove/{queueId}`
+- **Clear Queue**: `curl -X POST http://localhost:8080/queue/clear`
+
+### Real-time Updates (SSE)
+You can listen for real-time queue updates using:
+```bash
+curl -N http://localhost:8080/queue/events
 ```
 
 ## Troubleshooting
