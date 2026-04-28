@@ -1,6 +1,6 @@
 services:
   subsonic-search:
-    build: .
+    image: ghcr.io/pattyjogal/subsonic-jukebox-backend:latest
     container_name: subsonic-search-service
     ports:
       - "8080:8080"

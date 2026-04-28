@@ -75,10 +75,9 @@ class SubsonicService(
             val streamUrl = baseUrl.removeSuffix("/") + "/rest/stream?" +
                     "u=$username&t=$songToken&s=$songSalt&v=1.16.1&c=KtorSearchService&id=${it.id}"
             
-            val coverArtUrl = it.coverArt?.let { artId ->
-                baseUrl.removeSuffix("/") + "/rest/getCoverArt?" +
-                        "u=$username&t=$songToken&s=$songSalt&v=1.16.1&c=KtorSearchService&id=$artId"
-            }
+            val coverArtId = it.coverArt ?: it.id
+            val coverArtUrl = baseUrl.removeSuffix("/") + "/rest/getCoverArt?" +
+                    "u=$username&t=$songToken&s=$songSalt&v=1.16.1&c=KtorSearchService&id=$coverArtId"
 
             CleanSong(
                 id = it.id,
