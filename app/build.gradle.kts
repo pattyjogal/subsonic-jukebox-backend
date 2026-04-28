@@ -38,3 +38,30 @@ application {
 tasks.named<Test>("test") {
     useJUnitPlatform()
 }
+
+val buildWeb = tasks.register<Exec>("buildWeb") {
+    group = "build"
+    description = "Builds the React frontend"
+    workingDir = file("../web")
+    
+    // Check if on Windows or Unix
+    val isWindows = org.gradle.internal.os.OperatingSystem.current().isWindows
+    if (isWindows) {
+        commandLine("npm.cmd", "run", "build")
+    } else {
+        commandLine("npm", "run", "build")
+    }
+
+    // Only run if source files changed
+    inputs.dir("../web/src")
+    inputs.file("../web/package.json")
+    inputs.file("../web/vite.config.ts")
+    outputs.dir("../web/dist")
+}
+
+tasks.processResources {
+    dependsOn(buildWeb)
+    from(buildWeb) {
+        into("static")
+    }
+}
