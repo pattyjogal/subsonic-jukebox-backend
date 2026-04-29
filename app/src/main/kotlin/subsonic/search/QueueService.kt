@@ -38,8 +38,24 @@ class QueueService {
         return removed
     }
 
+    suspend fun upvote(queueId: String): Boolean {
+        val item = queue.find { it.queueId == queueId }
+        return if (item != null) {
+            queue.remove(item)
+            queue.add(item.copy(upvotes = item.upvotes + 1))
+            notifyChanged()
+            true
+        } else {
+            false
+        }
+    }
+
     fun getQueue(): List<QueueItem> {
         return queue.toList()
+            .sortedWith(
+                compareByDescending<QueueItem> { it.upvotes }
+                    .thenBy { it.addedAt }
+            )
     }
 
     suspend fun clear() {

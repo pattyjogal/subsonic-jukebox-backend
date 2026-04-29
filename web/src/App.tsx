@@ -5,7 +5,7 @@ import {
   List, 
   ListItem, 
   ListItemText, 
-  ListItemAvatar, 
+  ListItemAvatar, IconButton, 
   Avatar, 
   Typography, 
   Box, 
@@ -19,9 +19,10 @@ import {
   CssBaseline,
   BottomNavigation,
   BottomNavigationAction,
-  Button
+  Button,
+  Chip
 } from '@mui/material';
-import { Search as SearchIcon, ListMusic, Plus, Music2, Clock } from 'lucide-react';
+import { Search as SearchIcon, ListMusic, Plus, Music2, Clock, ThumbsUp } from 'lucide-react';
 import axios from 'axios';
 
 interface Song {
@@ -36,6 +37,7 @@ interface QueueItem {
   queueId: string;
   song: Song;
   addedAt: number;
+  upvotes: number;
 }
 
 const theme = createTheme({
@@ -54,10 +56,10 @@ const api = axios.create({
   baseURL: window.location.origin
 });
 
-const COOLDOWN_MS = 30000; // 30 seconds
+const COOLDOWN_MS = 30000;
 
 function App() {
-  const [tab, setTab] = useState(0); // 0 = Search, 1 = Queue
+  const [tab, setTab] = useState(0); 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Song[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -66,30 +68,26 @@ function App() {
   
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const cooldownTimer = useRef<number | null>(null);
+  const [votedItems, setVotedItems] = useState<string[]>([]);
 
   useEffect(() => {
     checkCooldown();
+    const savedVotes = JSON.parse(localStorage.getItem('jukebox_votes') || '[]');
+    setVotedItems(savedVotes);
     return () => { if (cooldownTimer.current) clearInterval(cooldownTimer.current); };
   }, []);
 
   const checkCooldown = () => {
     const lastAdded = parseInt(localStorage.getItem('jukebox_last_added') || '0');
-    const now = Date.now();
-    const diff = now - lastAdded;
-
+    const diff = Date.now() - lastAdded;
     if (diff < COOLDOWN_MS) {
       setCooldownRemaining(Math.ceil((COOLDOWN_MS - diff) / 1000));
       if (!cooldownTimer.current) {
-        cooldownTimer.current = window.setInterval(() => {
-          checkCooldown();
-        }, 1000);
+        cooldownTimer.current = window.setInterval(checkCooldown, 1000);
       }
     } else {
       setCooldownRemaining(0);
-      if (cooldownTimer.current) {
-        clearInterval(cooldownTimer.current);
-        cooldownTimer.current = null;
-      }
+      if (cooldownTimer.current) { clearInterval(cooldownTimer.current); cooldownTimer.current = null; }
     }
   };
 
@@ -110,33 +108,35 @@ function App() {
     try {
       const response = await api.get(`/search?q=${encodeURIComponent(query)}`);
       setResults(response.data);
-    } catch (error) {
-      console.error('Search failed', error);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   const fetchQueue = async () => {
     try {
       const response = await api.get('/queue');
       setQueue(response.data);
-    } catch (error) {
-      console.error('Failed to fetch queue', error);
-    }
+    } catch (e) { console.error(e); }
   };
 
   const addToQueue = async (song: Song) => {
     if (cooldownRemaining > 0) return;
-
     try {
       await api.post('/queue/add', song);
       localStorage.setItem('jukebox_last_added', Date.now().toString());
       checkCooldown();
-      setMessage({ text: `Added "${song.title}" to queue!`, type: 'success' });
-    } catch (error) {
-      setMessage({ text: 'Failed to add to queue.', type: 'error' });
-    }
+      setMessage({ text: `Added "${song.title}"`, type: 'success' });
+    } catch (e) { setMessage({ text: 'Failed to add.', type: 'error' }); }
+  };
+
+  const upvote = async (queueId: string) => {
+    if (votedItems.includes(queueId)) return;
+    try {
+      await api.post(`/queue/upvote/${queueId}`);
+      const newVotes = [...votedItems, queueId];
+      setVotedItems(newVotes);
+      localStorage.setItem('jukebox_votes', JSON.stringify(newVotes));
+      fetchQueue();
+    } catch (e) { console.error(e); }
   };
 
   return (
@@ -175,43 +175,26 @@ function App() {
                   }}
                 />
               </Paper>
-
               {cooldownRemaining > 0 && (
                 <Alert icon={<Clock size={20}/>} severity="info" sx={{ mb: 2, borderRadius: 3 }}>
-                  Cooldown active: wait {cooldownRemaining}s to add another.
+                  Wait {cooldownRemaining}s to add another.
                 </Alert>
               )}
-
-              <List sx={{ width: '100%' }}>
+              <List>
                 {results.map((song) => (
                   <ListItem
                     key={song.id}
                     sx={{ mb: 1, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', borderRadius: 4 }}
                     secondaryAction={
-                      <Button 
-                        variant={cooldownRemaining > 0 ? "outlined" : "contained"}
-                        disabled={cooldownRemaining > 0}
-                        onClick={() => addToQueue(song)}
-                        sx={{ minWidth: 48, borderRadius: 3 }}
-                      >
+                      <Button variant={cooldownRemaining > 0 ? "outlined" : "contained"} disabled={cooldownRemaining > 0} onClick={() => addToQueue(song)} sx={{ minWidth: 48, borderRadius: 3 }}>
                         <Plus size={20} />
                       </Button>
                     }
                   >
                     <ListItemAvatar>
-                      <Avatar variant="rounded" src={song.coverArtUrl} sx={{ width: 50, height: 50 }}>
-                        <Music2 size={24} />
-                      </Avatar>
+                      <Avatar variant="rounded" src={song.coverArtUrl} sx={{ width: 50, height: 50 }}><Music2 size={24} /></Avatar>
                     </ListItemAvatar>
-                    <ListItemText
-                      primary={song.title}
-                      secondary={song.artist}
-                      slotProps={{
-                        primary: { sx: { fontWeight: '600' }, noWrap: true },
-                        secondary: { noWrap: true }
-                      }}
-                      sx={{ pr: 2 }}
-                    />
+                    <ListItemText primary={song.title} secondary={song.artist} slotProps={{ primary: { sx: { fontWeight: '600' }, noWrap: true }, secondary: { noWrap: true } }} sx={{ pr: 2 }} />
                   </ListItem>
                 ))}
               </List>
@@ -223,25 +206,27 @@ function App() {
                 {queue.length === 0 ? (
                   <Typography sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>Queue is empty</Typography>
                 ) : (
-                  queue.map((item, index) => (
+                  queue.map((item) => (
                     <ListItem
                       key={item.queueId}
                       sx={{ mb: 1, border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', borderRadius: 4 }}
+                      secondaryAction={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {item.upvotes > 0 && <Chip label={item.upvotes} size="small" color="primary" variant="outlined" sx={{ fontWeight: 'bold' }} />}
+                          <IconButton 
+                            color={votedItems.includes(item.queueId) ? "primary" : "default"}
+                            disabled={votedItems.includes(item.queueId)}
+                            onClick={() => upvote(item.queueId)}
+                          >
+                            <ThumbsUp size={20} />
+                          </IconButton>
+                        </Box>
+                      }
                     >
                       <ListItemAvatar>
-                        <Avatar variant="rounded" src={item.song.coverArtUrl} sx={{ width: 50, height: 50 }}>
-                          <Music2 size={24} />
-                        </Avatar>
+                        <Avatar variant="rounded" src={item.song.coverArtUrl} sx={{ width: 50, height: 50 }}><Music2 size={24} /></Avatar>
                       </ListItemAvatar>
-                      <ListItemText
-                        primary={item.song.title}
-                        secondary={item.song.artist}
-                        slotProps={{
-                          primary: { sx: { fontWeight: '600' }, noWrap: true },
-                          secondary: { noWrap: true }
-                        }}
-                      />
-                      <Typography variant="caption" sx={{ opacity: 0.5 }}>#{index + 1}</Typography>
+                      <ListItemText primary={item.song.title} secondary={item.song.artist} slotProps={{ primary: { sx: { fontWeight: '600' }, noWrap: true }, secondary: { noWrap: true } }} sx={{ pr: 2 }} />
                     </ListItem>
                   ))
                 )}
@@ -250,18 +235,12 @@ function App() {
           )}
         </Container>
       </Box>
-
       <Paper sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100 }} elevation={3}>
-        <BottomNavigation
-          showLabels
-          value={tab}
-          onChange={(_, newValue) => setTab(newValue)}
-        >
+        <BottomNavigation showLabels value={tab} onChange={(_, v) => setTab(v)}>
           <BottomNavigationAction label="Search" icon={<SearchIcon size={24} />} />
           <BottomNavigationAction label="Queue" icon={<ListMusic size={24} />} />
         </BottomNavigation>
       </Paper>
-
       <Snackbar open={!!message} autoHideDuration={3000} onClose={() => setMessage(null)}>
         {message ? <Alert severity={message.type} variant="filled">{message.text}</Alert> : undefined}
       </Snackbar>

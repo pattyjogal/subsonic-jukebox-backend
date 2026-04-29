@@ -52,5 +52,6 @@ data class CleanSong(
 data class QueueItem(
     val queueId: String,
     val song: CleanSong,
-    val addedAt: Long = System.currentTimeMillis()
+    val addedAt: Long = System.currentTimeMillis(),
+    val upvotes: Int = 0
 )

@@ -113,6 +113,21 @@ fun main() {
                 call.respond(HttpStatusCode.OK, mapOf("status" to "cleared"))
             }
 
+            post("/queue/upvote/{id}") {
+                val id = call.parameters["id"]
+                if (id == null) {
+                    call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Missing queue item ID"))
+                    return@post
+                }
+
+                if (queueService.upvote(id)) {
+                    logger.info("Upvoted item: {}", id)
+                    call.respond(HttpStatusCode.OK, mapOf("status" to "upvoted"))
+                } else {
+                    call.respond(HttpStatusCode.NotFound, mapOf("error" to "Item not found"))
+                }
+            }
+
             sse("/queue/events") {
                 logger.info("Client connected to queue events")
                 // Send initial state
