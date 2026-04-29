@@ -4,6 +4,10 @@ plugins {
     application
 }
 
+application {
+    mainClass = "subsonic.search.AppKt"
+}
+
 repositories {
     mavenCentral()
 }
@@ -38,13 +42,13 @@ application {
 tasks.named<Test>("test") {
     useJUnitPlatform()
 }
-
 val buildWeb = tasks.register<Exec>("buildWeb") {
     group = "build"
     description = "Builds the React frontend"
     workingDir = file("../web")
-    
-    // Check if on Windows or Unix
+
+    onlyIf { System.getenv("SKIP_WEB_BUILD") != "true" }
+...
     val isWindows = org.gradle.internal.os.OperatingSystem.current().isWindows
     if (isWindows) {
         commandLine("npm.cmd", "run", "build")
@@ -52,7 +56,6 @@ val buildWeb = tasks.register<Exec>("buildWeb") {
         commandLine("npm", "run", "build")
     }
 
-    // Only run if source files changed
     inputs.dir("../web/src")
     inputs.file("../web/package.json")
     inputs.file("../web/vite.config.ts")
@@ -61,7 +64,7 @@ val buildWeb = tasks.register<Exec>("buildWeb") {
 
 tasks.processResources {
     dependsOn(buildWeb)
-    from(buildWeb) {
+    from(buildWeb.map { it.outputs.files.asPath + "/dist" }) {
         into("static")
     }
 }
