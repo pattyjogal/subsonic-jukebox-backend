@@ -5,8 +5,9 @@ import {
   List, 
   ListItem, 
   ListItemText, 
-  ListItemAvatar, IconButton, 
+  ListItemAvatar, 
   Avatar, 
+  IconButton,
   Typography, 
   Box, 
   Paper,
@@ -70,6 +71,28 @@ function App() {
   const cooldownTimer = useRef<number | null>(null);
   const [votedItems, setVotedItems] = useState<string[]>([]);
 
+  // 1. Unified Real-time Queue Listener (SSE)
+  useEffect(() => {
+    const eventSource = new EventSource('/queue/events');
+    
+    eventSource.addEventListener('queue-update', (event) => {
+      try {
+        const updatedQueue = JSON.parse(event.data);
+        setQueue(updatedQueue);
+      } catch (e) {
+        console.error("Failed to parse queue update", e);
+      }
+    });
+
+    eventSource.onerror = (err) => {
+      console.error("SSE Connection failed", err);
+      eventSource.close();
+    };
+
+    return () => eventSource.close();
+  }, []);
+
+  // 2. Cooldown and Local Storage Logic
   useEffect(() => {
     checkCooldown();
     const savedVotes = JSON.parse(localStorage.getItem('jukebox_votes') || '[]');
@@ -91,6 +114,7 @@ function App() {
     }
   };
 
+  // 3. Search Logic
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (query.length > 2) searchSongs();
@@ -99,23 +123,12 @@ function App() {
     return () => clearTimeout(delayDebounceFn);
   }, [query]);
 
-  useEffect(() => {
-    if (tab === 1) fetchQueue();
-  }, [tab]);
-
   const searchSongs = async () => {
     setLoading(true);
     try {
       const response = await api.get(`/search?q=${encodeURIComponent(query)}`);
       setResults(response.data);
     } catch (e) { console.error(e); } finally { setLoading(false); }
-  };
-
-  const fetchQueue = async () => {
-    try {
-      const response = await api.get('/queue');
-      setQueue(response.data);
-    } catch (e) { console.error(e); }
   };
 
   const addToQueue = async (song: Song) => {
@@ -135,7 +148,7 @@ function App() {
       const newVotes = [...votedItems, queueId];
       setVotedItems(newVotes);
       localStorage.setItem('jukebox_votes', JSON.stringify(newVotes));
-      fetchQueue();
+      // No need to manually fetchQueue() because SSE will push the update!
     } catch (e) { console.error(e); }
   };
 
