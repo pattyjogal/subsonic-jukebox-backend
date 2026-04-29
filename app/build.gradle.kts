@@ -63,7 +63,7 @@ val buildWeb = tasks.register<Exec>("buildWeb") {
 tasks.processResources {
     if (System.getenv("SKIP_WEB_BUILD") != "true") {
         dependsOn(buildWeb)
-        from(buildWeb.map { it.outputs.files.asPath + "/dist" }) {
+        from("../web/dist") {
             into("static")
         }
     }
