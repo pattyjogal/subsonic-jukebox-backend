@@ -47,8 +47,6 @@ val buildWeb = tasks.register<Exec>("buildWeb") {
     description = "Builds the React frontend"
     workingDir = file("../web")
 
-    onlyIf { System.getenv("SKIP_WEB_BUILD") != "true" }
-...
     val isWindows = org.gradle.internal.os.OperatingSystem.current().isWindows
     if (isWindows) {
         commandLine("npm.cmd", "run", "build")
@@ -63,8 +61,11 @@ val buildWeb = tasks.register<Exec>("buildWeb") {
 }
 
 tasks.processResources {
-    dependsOn(buildWeb)
-    from(buildWeb.map { it.outputs.files.asPath + "/dist" }) {
-        into("static")
+    if (System.getenv("SKIP_WEB_BUILD") != "true") {
+        dependsOn(buildWeb)
+        from(buildWeb.map { it.outputs.files.asPath + "/dist" }) {
+            into("static")
+        }
     }
 }
+
