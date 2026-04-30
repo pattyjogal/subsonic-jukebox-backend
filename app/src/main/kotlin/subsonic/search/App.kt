@@ -22,6 +22,7 @@ fun main() {
     val baseUrl = System.getenv("SUBSONIC_URL") ?: "http://localhost:4040"
     val username = System.getenv("SUBSONIC_USER") ?: "admin"
     val password = System.getenv("SUBSONIC_PASS") ?: "admin"
+    val fallbackPlaylistId = System.getenv("FALLBACK_PLAYLIST_ID")
 
     logger.info("Starting Subsonic Search Service...")
     logger.info("Base URL: {}", baseUrl)
@@ -85,8 +86,16 @@ fun main() {
             post("/queue/next") {
                 val item = queueService.next()
                 if (item != null) {
-                    logger.info("Playing next song: {} - {}", item.song.artist, item.song.title)
+                    logger.info("Playing next song from queue: {} - {}", item.song.artist, item.song.title)
                     call.respond(item)
+                } else if (!fallbackPlaylistId.isNullOrBlank()) {
+                    logger.info("Queue empty, fetching fallback song from playlist: {}", fallbackPlaylistId)
+                    val fallbackSong = subsonicService.getFallbackSong(fallbackPlaylistId)
+                    if (fallbackSong != null) {
+                        call.respond(QueueItem(queueId = "fallback-\${System.currentTimeMillis()}", song = fallbackSong))
+                    } else {
+                        call.respond(HttpStatusCode.NoContent)
+                    }
                 } else {
                     call.respond(HttpStatusCode.NoContent)
                 }

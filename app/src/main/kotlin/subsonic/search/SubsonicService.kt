@@ -88,5 +88,47 @@ class SubsonicService(
                 coverArtUrl = coverArtUrl
             )
         } ?: emptyList()
+    suspend fun getFallbackSong(playlistId: String): CleanSong? {
+        val salt = generateSalt()
+        val token = md5(password + salt)
+        val url = baseUrl.removeSuffix("/") + "/rest/getPlaylist"
+
+        val response: SubsonicResponse = try {
+            client.get(url) {
+                parameter("u", username)
+                parameter("t", token)
+                parameter("s", salt)
+                parameter("v", "1.16.1")
+                parameter("c", "KtorSearchService")
+                parameter("f", "json")
+                parameter("id", playlistId)
+            }.body()
+        } catch (e: Exception) {
+            logger.error("Failed to fetch fallback playlist", e)
+            return null
+        }
+
+        val songs = response.response.playlist?.song ?: return null
+        if (songs.isEmpty()) return null
+
+        val randomSong = songs.random()
+        
+        val songSalt = generateSalt()
+        val songToken = md5(password + songSalt)
+        val streamUrl = baseUrl.removeSuffix("/") + "/rest/stream?" +
+                "u=$username&t=$songToken&s=$songSalt&v=1.16.1&c=KtorSearchService&id=${randomSong.id}"
+        
+        val coverArtId = randomSong.coverArt ?: randomSong.id
+        val coverArtUrl = baseUrl.removeSuffix("/") + "/rest/getCoverArt?" +
+                "u=$username&t=$songToken&s=$songSalt&v=1.16.1&c=KtorSearchService&id=$coverArtId&size=512"
+
+        return CleanSong(
+            id = randomSong.id,
+            title = randomSong.title,
+            artist = randomSong.artist,
+            album = randomSong.album,
+            streamUrl = streamUrl,
+            coverArtUrl = coverArtUrl
+        )
     }
 }

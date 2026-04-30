@@ -14,6 +14,7 @@ data class ResponseContent(
     val status: String,
     val version: String,
     val searchResult3: SearchResult3? = null,
+    val playlist: SearchResult3? = null, // Subsonic uses same song list structure for playlists
     val error: SubsonicError? = null
 )
 
