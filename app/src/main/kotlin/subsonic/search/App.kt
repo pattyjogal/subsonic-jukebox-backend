@@ -71,6 +71,19 @@ fun main() {
                 call.respond(queueService.getQueue())
             }
 
+            get("/fallback/playlist") {
+                if (fallbackPlaylistId.isNullOrBlank()) {
+                    call.respond(HttpStatusCode.NoContent)
+                    return@get
+                }
+                val fallbackSongs = subsonicService.getFallbackPlaylist(fallbackPlaylistId)
+                if (fallbackSongs.isNotEmpty()) {
+                    call.respond(fallbackSongs)
+                } else {
+                    call.respond(HttpStatusCode.NoContent)
+                }
+            }
+
             post("/queue/add") {
                 try {
                     val song = call.receive<CleanSong>()
@@ -92,7 +105,7 @@ fun main() {
                     logger.info("Queue empty, fetching fallback song from playlist: {}", fallbackPlaylistId)
                     val fallbackSong = subsonicService.getFallbackSong(fallbackPlaylistId)
                     if (fallbackSong != null) {
-                        call.respond(QueueItem(queueId = "fallback-\${System.currentTimeMillis()}", song = fallbackSong))
+                        call.respond(QueueItem(queueId = "fallback-${System.currentTimeMillis()}", song = fallbackSong))
                     } else {
                         call.respond(HttpStatusCode.NoContent)
                     }
