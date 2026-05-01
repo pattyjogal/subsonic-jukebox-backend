@@ -110,7 +110,8 @@ class SubsonicService(
             return emptyList()
         }
 
-        val songs = response.response.playlist?.song ?: return emptyList()
+        val playlist = response.response.playlist ?: return emptyList()
+        val songs = if (playlist.entry.isNotEmpty()) playlist.entry else playlist.song
         if (songs.isEmpty()) return emptyList()
 
         return songs.map { song ->
@@ -154,7 +155,8 @@ class SubsonicService(
             return null
         }
 
-        val songs = response.response.playlist?.song ?: return null
+        val playlist = response.response.playlist ?: return null
+        val songs = if (playlist.entry.isNotEmpty()) playlist.entry else playlist.song
         if (songs.isEmpty()) return null
 
         val randomSong = songs.random()

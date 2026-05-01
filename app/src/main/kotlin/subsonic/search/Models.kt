@@ -20,7 +20,8 @@ data class ResponseContent(
 
 @Serializable
 data class SearchResult3(
-    val song: List<Song> = emptyList()
+    val song: List<Song> = emptyList(),
+    val entry: List<Song> = emptyList()
 )
 
 @Serializable
