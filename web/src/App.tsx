@@ -57,7 +57,7 @@ const api = axios.create({
   baseURL: window.location.origin
 });
 
-const COOLDOWN_MS = 30000;
+const COOLDOWN_MS = 5000;
 
 function App() {
   const [tab, setTab] = useState(0); 
